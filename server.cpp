@@ -29,6 +29,10 @@ cowircd::server::server(int fd, const server_config& config)
 {
 }
 
+cowircd::server::~server()
+{
+}
+
 bool cowircd::server::listen()
 {
     const int fd = this->get_fd();

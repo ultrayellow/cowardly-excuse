@@ -123,6 +123,11 @@ void cowircd::user::on_write() throw()
     this->outbound.discard();
 }
 
+void cowircd::user::send_message()
+{
+    this->do_write_message(NULL);
+}
+
 void cowircd::user::do_write(const unsigned char* buf, std::size_t len)
 {
     this->outbound.put(buf, len);

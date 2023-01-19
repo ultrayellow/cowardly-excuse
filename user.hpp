@@ -31,9 +31,11 @@ namespace cowircd
         void on_read() throw();
         void on_write() throw();
 
-        void do_write(const unsigned char* buf, std::size_t len);
+        void send_message();
 
     private:
+        void do_write(const unsigned char* buf, std::size_t len);
+
         // #1. LineBasedFrameDecoder
         byte_buffer cumulative;
         void process_byte_buffer(void*);
@@ -48,5 +50,9 @@ namespace cowircd
 
         // #4. IRCHandler
         void process_message(void*);
+
+    private:
+        user(const user&);
+        user& operator=(const user&);
     };
 }

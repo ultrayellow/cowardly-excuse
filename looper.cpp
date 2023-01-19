@@ -17,6 +17,14 @@
 
 #include <iostream>
 
+cowircd::looper::looper()
+{
+}
+
+cowircd::looper::~looper()
+{
+}
+
 int cowircd::looper::retrieve_fd(::fd_set& rd, ::fd_set& wr)
 {
     int max_fd = 0;

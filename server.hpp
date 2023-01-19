@@ -24,11 +24,16 @@ namespace cowircd
 
     public:
         server(int fd, const server_config& config);
+        ~server();
         bool listen();
 
         bool is_readability_interested() const throw();
         bool is_writability_interested() const throw();
         void on_read() throw();
         void on_write() throw();
+
+    private:
+        server(const server&);
+        server& operator=(const server&);
     };
 }
