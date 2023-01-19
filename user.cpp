@@ -81,6 +81,10 @@ void cowircd::user::on_write() throw()
     {
         const unsigned char* buf = this->outbound.get();
         std::size_t len = this->outbound.size();
+        if (len == 0)
+        {
+            break;
+        }
         ::ssize_t r = ::send(fd, buf, len, MSG_NOSIGNAL);
         if (r < 0)
         {
@@ -159,8 +163,11 @@ void cowircd::user::process_byte_buffer(void* arg)
     this->cumulative.discard();
 }
 
-void cowircd::user::do_write_string(void*)
+void cowircd::user::do_write_string(void* arg)
 {
+    std::string& str = *static_cast<std::string*>(arg);
+    str.append("\r\n");
+    this->do_write(reinterpret_cast<const unsigned char*>(str.data()), sizeof(std::string::value_type) * str.size());
 }
 
 void cowircd::user::process_string_vector(void* arg)
@@ -176,7 +183,8 @@ void cowircd::user::process_string_vector(void* arg)
         const std::string& s0 = this->cumulative_lines[3 * i + 0];
         const std::string& s1 = this->cumulative_lines[3 * i + 1];
         const std::string& s2 = this->cumulative_lines[3 * i + 2];
-        std::cout << s0 << s1 << s2 << std::endl;
+        std::string s = s0 + s1 + s2;
+        this->do_write_string(&s);
     }
     this->cumulative_lines.erase(this->cumulative_lines.begin(), this->cumulative_lines.end() - this->cumulative_lines.size() % 3);
     // FIXME: 실험용 임시 로직 끝
