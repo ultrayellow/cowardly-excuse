@@ -1,3 +1,8 @@
+// ******************************* //
+//            @COPYLEFT            //
+//       ALL WRONGS RESERVED       //
+// ******************************* //
+
 #include "looper.hpp"
 #include "server.hpp"
 

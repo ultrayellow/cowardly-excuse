@@ -1,3 +1,8 @@
+// ******************************* //
+//            @COPYLEFT            //
+//       ALL WRONGS RESERVED       //
+// ******************************* //
+
 #include "looper.hpp"
 
 #include <sys/select.h>
@@ -8,6 +13,8 @@
 #include <algorithm>
 #include <cerrno>
 #include <map>
+
+#include <iostream>
 
 void cowircd::looper::loop()
 {
@@ -33,7 +40,7 @@ void cowircd::looper::loop()
             {
                 FD_SET(fd, &wr);
             }
-            max_fd = std::max(fd, max_fd);
+            max_fd = std::max(fd + 1, max_fd);
         }
 
     LABEL_RETRY:
@@ -74,9 +81,10 @@ void cowircd::looper::loop()
     }
 }
 
-void cowircd::looper::register_entry(uy::shared_ptr<socket_entry> entry)
+void cowircd::looper::register_entry(const uy::shared_ptr<socket_entry>& entry)
 {
     this->entries.insert(std::make_pair(entry->get_fd(), entry));
+    entry->set_worker(this);
 }
 
 void cowircd::looper::deregister_entry(int fd)

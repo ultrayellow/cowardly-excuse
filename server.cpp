@@ -1,6 +1,15 @@
+// ******************************* //
+//            @COPYLEFT            //
+//       ALL WRONGS RESERVED       //
+// ******************************* //
+
 #include "server.hpp"
 
+#include "looper.hpp"
 #include "socket_entry.hpp"
+#include "user.hpp"
+
+#include <uy_shared_ptr.hpp>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -12,6 +21,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+
 #include <iostream>
 
 cowircd::server::server(int fd, const server_config& config)
@@ -28,8 +38,8 @@ bool cowircd::server::listen()
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = ::htons(this->config.port);
 
-    return !(::bind(fd, &reinterpret_cast<struct ::sockaddr&>(sin), sizeof(sin)) < 0) &&
-           !(::listen(fd, this->config.backlog) < 0);
+    return ::bind(fd, &reinterpret_cast<struct ::sockaddr&>(sin), sizeof(sin)) == 0 &&
+           ::listen(fd, this->config.backlog) == 0;
 }
 
 bool cowircd::server::is_readability_interested() const throw()
@@ -86,9 +96,13 @@ LABEL_RETRY:
     }
     else
     {
-        std::cout << "accept 성공: #" << child_fd << " " << ::inet_ntoa(addr.sin_addr) << " : " << ::ntohs(addr.sin_port) << std::endl;
+        std::string remote_addr = ::inet_ntoa(addr.sin_addr);
+        int remote_port = ::ntohs(addr.sin_port);
 
-        // TODO: make_shared<client>(child_fd, addr)
+        std::cout << "accept 성공: #" << child_fd << " " << remote_addr << " : " << remote_port << std::endl;
+
+        uy::shared_ptr<user> child = uy::make_shared<user>(remote_addr, remote_port, child_fd);
+        this->worker->register_entry(child);
     }
 }
 

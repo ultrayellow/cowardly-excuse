@@ -24,7 +24,7 @@ namespace cowircd
     public:
         void loop();
 
-        void register_entry(uy::shared_ptr<socket_entry> entry);
+        void register_entry(const uy::shared_ptr<socket_entry>& entry);
         void deregister_entry(int fd);
     };
 }

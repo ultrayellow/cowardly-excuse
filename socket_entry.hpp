@@ -5,7 +5,10 @@
 
 #pragma once
 
+#include <fcntl.h>
 #include <unistd.h>
+
+#include <cassert>
 
 namespace cowircd
 {
@@ -15,11 +18,13 @@ namespace cowircd
     {
     private:
         int fd;
+
+    protected:
         looper* worker;
 
     public:
-        socket_entry(int fd) : fd(fd) {}
-        virtual ~socket_entry() { ::close(fd); }
+        socket_entry(int fd) : fd(fd) { assert(::fcntl(fd, F_SETFL, ::fcntl(fd, F_GETFL) | O_NONBLOCK) == 0); }
+        virtual ~socket_entry() { assert(::close(fd) == 0); }
 
         int get_fd() const throw() { return this->fd; }
         void set_worker(looper* worker) throw() { this->worker = worker; }
