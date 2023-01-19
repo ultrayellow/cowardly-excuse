@@ -81,11 +81,19 @@ namespace cowircd
             this->put(data, sizeof(t));
         }
 
-        inline void remove(const size_type size)
+        inline void remove(const size_type size) throw()
         {
             assert(this->size() >= size);
 
             this->position += size;
+        }
+
+        inline void discard() throw()
+        {
+            const iterator begin = this->buffer.begin();
+            const iterator end = begin + this->position;
+            this->buffer.erase(begin, end);
+            this->position = size_type();
         }
 
     private:

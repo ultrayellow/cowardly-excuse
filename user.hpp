@@ -11,6 +11,7 @@
 #include <uy_shared_ptr.hpp>
 
 #include <string>
+#include <vector>
 
 namespace cowircd
 {
@@ -29,5 +30,23 @@ namespace cowircd
         bool is_writability_interested() const throw();
         void on_read() throw();
         void on_write() throw();
+
+        void do_write(const unsigned char* buf, std::size_t len);
+
+    private:
+        // #1. LineBasedFrameDecoder
+        byte_buffer cumulative;
+        void process_byte_buffer(void*);
+
+        // #2. StringEncoder
+        void do_write_string(void*);
+
+        // #3. IRCMessageCodecAdapter
+        std::vector<std::string> cumulative_lines;
+        void process_string_vector(void*);
+        void do_write_message(void*);
+
+        // #4. IRCHandler
+        void process_message(void*);
     };
 }

@@ -34,7 +34,7 @@ bool cowircd::user::is_readability_interested() const throw()
 
 bool cowircd::user::is_writability_interested() const throw()
 {
-    return false; // FIXME: enable if final-outbound-buffer is not empty
+    return this->outbound.size() != 0;
 }
 
 void cowircd::user::on_read() throw()
@@ -70,14 +70,122 @@ void cowircd::user::on_read() throw()
         }
         inbound.raw_shrink(r);
 
-        // NOTE: please fully consume inbound
-        std::cout << "recv notified " << fd << std::endl;
-        ::send(fd, inbound.raw_buffer(), inbound.raw_length(), 0); // echo for test
+        this->process_byte_buffer(&inbound);
     }
 }
 
 void cowircd::user::on_write() throw()
 {
     const int fd = this->get_fd();
-    std::cout << "send notified " << fd << std::endl;
+    for (;;)
+    {
+        const unsigned char* buf = this->outbound.get();
+        std::size_t len = this->outbound.size();
+        ::ssize_t r = ::send(fd, buf, len, MSG_NOSIGNAL);
+        if (r < 0)
+        {
+            switch (errno)
+            {
+            case EAGAIN:
+                // is_writability_interested에 의해 신호 대기가 활성화 됨.
+                return;
+
+            case EINTR:
+                continue;
+
+            case ECONNRESET:
+                std::cerr << "send 실패: 상대방이 연결을 끊었음." << std::endl;
+                break;
+
+            case ENOMEM:
+                std::cerr << "send 실패: 가용 메모리가 없음." << std::endl;
+                break;
+
+            case EPIPE:
+                std::cerr << "send 실패: SIGPIPE" << std::endl;
+                break;
+
+            default:
+                std::cerr << "send 실패: 예상하지 못한 오류. 복구할 수 없음: " << std::strerror(errno) << std::endl;
+                break;
+            }
+            this->outbound.remove(len);
+            this->outbound.discard();
+            this->worker->deregister_entry(fd);
+            return;
+        }
+        this->outbound.remove(r);
+    }
+    this->outbound.discard();
+}
+
+void cowircd::user::do_write(const unsigned char* buf, std::size_t len)
+{
+    this->outbound.put(buf, len);
+    this->on_write();
+}
+
+void cowircd::user::process_byte_buffer(void* arg)
+{
+    byte_buffer& inbound = *static_cast<byte_buffer*>(arg);
+    byte_buffer::size_type remaining = this->cumulative.size();
+    this->cumulative.put(inbound.get(), inbound.size());
+    inbound.remove(inbound.size());
+
+    std::vector<std::string> lines;
+    const unsigned char* buf = this->cumulative.get();
+    byte_buffer::size_type begin = 0;
+    bool cr = false;
+    for (byte_buffer::size_type i = remaining; i < this->cumulative.size(); i++)
+    {
+        if (cr && buf[i] == '\n')
+        {
+            lines.push_back(std::string(&buf[begin], &buf[i - 1]));
+            begin = i + 1;
+        }
+        else if (i - begin > 512)
+        {
+            // NOTE: 이 정도 길이를 CR-LF 없이 보내는건 규약 위반 아니냐?
+        }
+
+        cr = buf[i] == '\r';
+    }
+    this->cumulative.remove(begin);
+
+    if (!lines.empty())
+    {
+        this->process_string_vector(&lines);
+    }
+    this->cumulative.discard();
+}
+
+void cowircd::user::do_write_string(void*)
+{
+}
+
+void cowircd::user::process_string_vector(void* arg)
+{
+    std::vector<std::string>& lines = *static_cast<std::vector<std::string>*>(arg);
+    this->cumulative_lines.insert(this->cumulative_lines.end(), lines.begin(), lines.end());
+    lines.clear();
+
+    // FIXME: 실험용 임시 로직 시작
+    // 3줄 단위로 echo 하기
+    for (std::size_t i = 0; i < this->cumulative_lines.size() / 3; i++)
+    {
+        const std::string& s0 = this->cumulative_lines[3 * i + 0];
+        const std::string& s1 = this->cumulative_lines[3 * i + 1];
+        const std::string& s2 = this->cumulative_lines[3 * i + 2];
+        std::cout << s0 << s1 << s2 << std::endl;
+    }
+    this->cumulative_lines.erase(this->cumulative_lines.begin(), this->cumulative_lines.end() - this->cumulative_lines.size() % 3);
+    // FIXME: 실험용 임시 로직 끝
+}
+
+void cowircd::user::do_write_message(void*)
+{
+}
+
+void cowircd::user::process_message(void*)
+{
 }

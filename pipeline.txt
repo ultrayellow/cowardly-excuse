@@ -1,0 +1,13 @@
++--------------+--------------+--------------+--------------+--------------+--------------+
+|              | bytes        |   skip...    | strings      |message object|   action     |
+>> recv(bytes) | =(process)=> | ============ | =(process)=> | =(handle)=+--+-----@        |
+|              |   to strings | pass string  |   to objects |  response |  |     |        |
+|~~~~~~~~~~~~~~|~~~~~~~~~~~~~~|~~~~~~~~~~~~~~|~~~~~~~~~~~~~~|~~~~~~~~~~~+~~|~~~~~|~~~~~~~~|
+|              |  pass bytes  |       string |      objects |  pass obj V  |     V        |
+<< send(bytes) | ============ | <=(process)= | <=(process)= | ============ | << broadcast |
+|              |   skip...    | to bytes     | to string    |   skip...    |     object   |
++--------------+--------------+--------------+--------------+--------------+--------------+
+<  #0. Socket     #1. Line       #2. String   #3. IRCMessage    #4. IRC      ##. Business >
+<     Layer        BasedFrame        Encoder        Codec        Handler         Logics   >
+<                    Decoder                       Adapter                                >
+<=========================================================================================>

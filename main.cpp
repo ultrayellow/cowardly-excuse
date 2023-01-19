@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
     cfg.backlog = 10;
 
     const int server_fd = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (server_fd < 0)
+    if (server_fd < 0 || ::setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, "\1\1\1\1\1\1\1\1", sizeof(int)) < 0)
     {
         throw std::runtime_error(::strerror(errno));
     }
