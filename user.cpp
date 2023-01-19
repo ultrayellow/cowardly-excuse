@@ -34,33 +34,50 @@ bool cowircd::user::is_readability_interested() const throw()
 
 bool cowircd::user::is_writability_interested() const throw()
 {
-    return false; // FIXME:
+    return false; // FIXME: enable if final-outbound-buffer is not empty
 }
 
 void cowircd::user::on_read() throw()
 {
+    const int fd = this->get_fd();
     byte_buffer inbound(4096);
-    ::ssize_t r = ::recv(this->get_fd(), inbound.raw_buffer(), inbound.raw_length(), 0);
-    if (r <= 0)
+    for (;;)
     {
-        if (r == 0)
+        ::ssize_t r = ::recv(fd, inbound.raw_buffer(), inbound.raw_length(), 0);
+        if (r <= 0)
         {
-            std::cout << "Gracefully shutdown" << std::endl;
-        }
-        else
-        {
-            std::cerr << "what: " << std::strerror(errno) << std::endl;
-        }
-        this->worker->deregister_entry(this->get_fd());
-        return;
-    }
-    inbound.raw_shrink(r);
+            if (r == 0)
+            {
+                std::cout << "Gracefully shutdown" << std::endl;
+            }
+            else
+            {
+                switch (errno)
+                {
+                case EAGAIN:
+                    return;
 
-    std::cout << "recv notified " << this->get_fd() << std::endl;
-    ::send(this->get_fd(), inbound.raw_buffer(), inbound.raw_length(), 0); // echo for test
+                case EINTR:
+                    continue;
+
+                default:
+                    std::cerr << "recv 실패: 예상하지 못한 오류. 복구할 수 없음: " << std::strerror(errno) << std::endl;
+                    break;
+                }
+            }
+            this->worker->deregister_entry(fd);
+            return;
+        }
+        inbound.raw_shrink(r);
+
+        // NOTE: please fully consume inbound
+        std::cout << "recv notified " << fd << std::endl;
+        ::send(fd, inbound.raw_buffer(), inbound.raw_length(), 0); // echo for test
+    }
 }
 
 void cowircd::user::on_write() throw()
 {
-    std::cout << "send notified " << this->get_fd() << std::endl;
+    const int fd = this->get_fd();
+    std::cout << "send notified " << fd << std::endl;
 }

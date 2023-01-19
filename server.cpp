@@ -55,54 +55,57 @@ bool cowircd::server::is_writability_interested() const throw()
 void cowircd::server::on_read() throw()
 {
     struct ::sockaddr_in addr;
-    ::socklen_t addr_len = sizeof(addr);
-LABEL_RETRY:
-    int child_fd = ::accept(this->get_fd(), &reinterpret_cast<struct ::sockaddr&>(addr), &addr_len);
-    if (child_fd < 0)
+    ::socklen_t addr_len;
+    for (;;)
     {
-        switch (errno)
+        addr_len = sizeof(addr);
+        int child_fd = ::accept(this->get_fd(), &reinterpret_cast<struct ::sockaddr&>(addr), &addr_len);
+        if (child_fd < 0)
         {
-        case EAGAIN:
-            return;
+            switch (errno)
+            {
+            case EAGAIN:
+                return;
 
-        case EINTR:
-            goto LABEL_RETRY;
+            case EINTR:
+                continue;
 
-        case ECONNABORTED:
-            std::cerr << "accept 실패: 연결이 중단되었음." << std::endl;
-            break;
+            case ECONNABORTED:
+                std::cerr << "accept 실패: 연결이 중단되었음." << std::endl;
+                break;
 
-        case EMFILE:
-            std::cerr << "accept 실패: 프로세스가 사용할 수 있는 FD가 고갈됨." << std::endl;
-            break;
+            case EMFILE:
+                std::cerr << "accept 실패: 프로세스가 사용할 수 있는 FD가 고갈됨." << std::endl;
+                break;
 
-        case ENFILE:
-            std::cerr << "accept 실패: 시스템이 사용할 수 있는 FD가 고갈됨." << std::endl;
-            break;
+            case ENFILE:
+                std::cerr << "accept 실패: 시스템이 사용할 수 있는 FD가 고갈됨." << std::endl;
+                break;
 
-        case ENOBUFS:
-        case ENOMEM:
-            std::cerr << "accept 실패: 메모리 여유가 충분하지 않음." << std::endl;
-            break;
+            case ENOBUFS:
+            case ENOMEM:
+                std::cerr << "accept 실패: 메모리 여유가 충분하지 않음." << std::endl;
+                break;
 
-        case EPERM:
-            std::cerr << "accept 실패: 방화벽이 연결을 금지했음." << std::endl;
-            break;
+            case EPERM:
+                std::cerr << "accept 실패: 방화벽이 연결을 금지했음." << std::endl;
+                break;
 
-        default:
-            std::cerr << "accept 실패: 예상하지 못한 오류. 복구할 수 없음: " << std::strerror(errno) << std::endl;
-            std::exit(EXIT_FAILURE);
+            default:
+                std::cerr << "accept 실패: 예상하지 못한 오류. 복구할 수 없음: " << std::strerror(errno) << std::endl;
+                std::exit(EXIT_FAILURE);
+            }
         }
-    }
-    else
-    {
-        std::string remote_addr = ::inet_ntoa(addr.sin_addr);
-        int remote_port = ::ntohs(addr.sin_port);
+        else
+        {
+            std::string remote_addr = ::inet_ntoa(addr.sin_addr);
+            int remote_port = ::ntohs(addr.sin_port);
 
-        std::cout << "accept 성공: #" << child_fd << " " << remote_addr << " : " << remote_port << std::endl;
+            std::cout << "accept 성공: #" << child_fd << " " << remote_addr << " : " << remote_port << std::endl;
 
-        uy::shared_ptr<user> child = uy::make_shared<user>(remote_addr, remote_port, child_fd);
-        this->worker->register_entry(child);
+            uy::shared_ptr<user> child = uy::make_shared<user>(remote_addr, remote_port, child_fd);
+            this->worker->register_entry(child);
+        }
     }
 }
 
