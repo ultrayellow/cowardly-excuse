@@ -14,25 +14,35 @@
 #include <string>
 #include <vector>
 
+#define DEFAULT_DISCONNECT_REASON "The connection to the server has been lost."
+
 namespace cowircd
 {
+    class server;
+    class room;
+
     class user : public socket_entry
     {
     private:
         std::string remote_addr;
         int remote_port;
         byte_buffer outbound;
+        bool closed;
+        server& svr;
 
     public:
-        user(const std::string& remote_addr, int remote_port, int fd);
+        user(const std::string& remote_addr, int remote_port, server& svr, int fd);
         ~user();
 
         bool is_readability_interested() const throw();
         bool is_writability_interested() const throw();
         void on_read() throw();
         void on_write() throw();
+        void on_close() throw();
 
         void send_message(const irc_message& msg);
+
+        void disconnect();
 
     private:
         void do_write(const void* buf, std::size_t len);
@@ -52,6 +62,8 @@ namespace cowircd
         void do_write_message(const void*);
 
         // #4. IRCHandler
+        std::string quit_reason;
+        std::vector<room*> room_list;
         void process_message(void*);
 
     private:

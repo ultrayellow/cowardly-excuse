@@ -7,6 +7,7 @@
 
 #include "irc_message.hpp"
 #include "looper.hpp"
+#include "room.hpp"
 #include "socket_entry.hpp"
 
 #include <sys/socket.h>
@@ -18,14 +19,15 @@
 
 #include <iostream>
 
-cowircd::user::user(const std::string& remote_addr, int remote_port, int fd)
-    : socket_entry(fd), remote_addr(remote_addr), remote_port(remote_port), outbound()
+cowircd::user::user(const std::string& remote_addr, int remote_port, server& svr, int fd)
+    : socket_entry(fd), remote_addr(remote_addr), remote_port(remote_port), outbound(), closed(), svr(svr)
 {
+    this->quit_reason = DEFAULT_DISCONNECT_REASON;
 }
 
 cowircd::user::~user()
 {
-    std::cout << "유저 소멸: #" << this->get_fd() << " " << this->remote_addr << " : " << this->remote_port << std::endl;
+    std::cout << "[DEBUG] 유저 소멸: #" << this->get_fd() << " " << this->remote_addr << " : " << this->remote_port << std::endl;
 }
 
 bool cowircd::user::is_readability_interested() const throw()
@@ -49,7 +51,7 @@ void cowircd::user::on_read() throw()
         {
             if (r == 0)
             {
-                std::cout << "Gracefully shutdown" << std::endl;
+                std::cout << "[DEBUG] Gracefully shutdown" << std::endl;
             }
             else
             {
@@ -66,7 +68,7 @@ void cowircd::user::on_read() throw()
                     break;
                 }
             }
-            this->worker->deregister_entry(fd);
+            this->disconnect();
             return;
         }
         inbound.raw_shrink(r);
@@ -116,7 +118,7 @@ void cowircd::user::on_write() throw()
             }
             this->outbound.remove(len);
             this->outbound.discard();
-            this->worker->deregister_entry(fd);
+            this->disconnect();
             return;
         }
         this->outbound.remove(r);
@@ -124,9 +126,31 @@ void cowircd::user::on_write() throw()
     this->outbound.discard();
 }
 
+void cowircd::user::on_close() throw()
+{
+    if (this->closed)
+    {
+        return;
+    }
+    this->closed = true;
+
+    std::vector<room*> move;
+    this->room_list.swap(move);
+    for (std::vector<room*>::iterator it = move.begin(); it != move.end(); ++it)
+    {
+        room* chat_room = *it;
+        chat_room->quit(this, this->quit_reason);
+    }
+}
+
 void cowircd::user::send_message(const irc_message& msg)
 {
     this->do_write_message(&msg);
+}
+
+void cowircd::user::disconnect()
+{
+    this->worker->deregister_entry(this->get_fd());
 }
 
 void cowircd::user::do_write(const void* buf, std::size_t len)
@@ -202,7 +226,7 @@ void cowircd::user::process_string_vector(void* arg)
         }
         else
         {
-            std::cerr << "parse error: \"" << s << "\"" << std::endl;
+            std::cerr << "[DEBUG] parse error: \"" << s << "\"" << std::endl;
         }
     }
     this->cumulative_lines.clear();

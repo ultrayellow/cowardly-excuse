@@ -7,6 +7,7 @@
 
 #include "socket_entry.hpp"
 
+#include <map>
 #include <uy_shared_ptr.hpp>
 
 namespace cowircd
@@ -16,6 +17,9 @@ namespace cowircd
         int port;
         int backlog;
     };
+
+    class user;
+    class room;
 
     class server : public socket_entry
     {
@@ -31,6 +35,7 @@ namespace cowircd
         bool is_writability_interested() const throw();
         void on_read() throw();
         void on_write() throw();
+        void on_close() throw();
 
     private:
         server(const server&);

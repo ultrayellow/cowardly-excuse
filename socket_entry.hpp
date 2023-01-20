@@ -32,6 +32,7 @@ namespace cowircd
         virtual bool is_writability_interested() const throw() = 0;
         virtual void on_read() throw() = 0;
         virtual void on_write() throw() = 0;
+        virtual void on_close() throw() = 0;
 
     private:
         socket_entry(const socket_entry&);

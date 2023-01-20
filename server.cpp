@@ -105,9 +105,9 @@ void cowircd::server::on_read() throw()
             std::string remote_addr = ::inet_ntoa(addr.sin_addr);
             int remote_port = ::ntohs(addr.sin_port);
 
-            std::cout << "accept 성공: #" << child_fd << " " << remote_addr << " : " << remote_port << std::endl;
+            std::cout << "[DEBUG] accept 성공: #" << child_fd << " " << remote_addr << " : " << remote_port << std::endl;
 
-            uy::shared_ptr<user> child = uy::make_shared<user>(remote_addr, remote_port, child_fd);
+            uy::shared_ptr<user> child = uy::make_shared<user>(remote_addr, remote_port, *this, child_fd);
             this->worker->register_entry(child);
         }
     }
@@ -116,4 +116,9 @@ void cowircd::server::on_read() throw()
 void cowircd::server::on_write() throw()
 {
     assert(false);
+}
+
+void cowircd::server::on_close() throw()
+{
+    // TODO: guaranteed all closed children
 }

@@ -134,5 +134,11 @@ void cowircd::looper::register_entry(const uy::shared_ptr<socket_entry>& entry)
 
 void cowircd::looper::deregister_entry(int fd)
 {
-    this->entries.erase(fd);
+    dictionary_type::iterator it = this->entries.find(fd);
+    if (it != this->entries.end())
+    {
+        // 딱 한번만 on_close가 호출되는 것이 보장됨.
+        it->second->on_close();
+        this->entries.erase(it);
+    }
 }
