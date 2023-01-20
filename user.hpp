@@ -6,6 +6,7 @@
 #pragma once
 
 #include "byte_buffer.hpp"
+#include "irc_message.hpp"
 #include "socket_entry.hpp"
 
 #include <uy_shared_ptr.hpp>
@@ -31,22 +32,24 @@ namespace cowircd
         void on_read() throw();
         void on_write() throw();
 
-        void send_message();
+        void send_message(const irc_message& msg);
 
     private:
-        void do_write(const unsigned char* buf, std::size_t len);
+        void do_write(const void* buf, std::size_t len);
+        void do_flush();
+        void do_write_and_flush(const void* buf, std::size_t len);
 
         // #1. LineBasedFrameDecoder
         byte_buffer cumulative;
         void process_byte_buffer(void*);
 
         // #2. StringEncoder
-        void do_write_string(void*);
+        void do_write_string(const void*);
 
         // #3. IRCMessageCodecAdapter
         std::vector<std::string> cumulative_lines;
         void process_string_vector(void*);
-        void do_write_message(void*);
+        void do_write_message(const void*);
 
         // #4. IRCHandler
         void process_message(void*);

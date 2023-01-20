@@ -46,5 +46,6 @@ namespace cowircd
         void remove_all_param();
 
         std::string to_string() const;
+        std::string to_pretty_string() const;
     };
 }

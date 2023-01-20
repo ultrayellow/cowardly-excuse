@@ -229,6 +229,33 @@ std::string cowircd::irc_message::to_string() const
     {
         oss << ":" << this->prefix << " ";
     }
-    // TODO: ...
-    return std::string();
+    oss << this->command;
+    for (std::vector<std::string>::const_iterator it = this->params.begin(); it != this->params.end(); ++it)
+    {
+        oss << ((this->last_param_is_trailing && it + 1 == this->params.end()) ? " :" : " ") << *it;
+    }
+    return oss.str();
+}
+
+std::string cowircd::irc_message::to_pretty_string() const
+{
+    std::ostringstream oss;
+    oss << "{" << std::endl;
+    oss << "\tCOMMAND=\"" << this->get_command() << "\"" << std::endl;
+    if (this->has_prefix())
+    {
+        oss << "\tPREFIX=\"" << this->get_prefix() << "\"" << std::endl;
+    }
+    else
+    {
+        oss << "\tPREFIX=(null)" << std::endl;
+    }
+    oss << "\tPARAMS = [" << this->size_param() << "] {" << std::endl;
+    for (std::size_t i = 1; i <= this->size_param(); i++)
+    {
+        oss << "\t\t[" << i << "] = \"" << this->operator[](i) << "\"" << std::endl;
+    }
+    oss << "\t}" << std::endl;
+    oss << "}" << std::endl;
+    return oss.str();
 }

@@ -124,15 +124,25 @@ void cowircd::user::on_write() throw()
     this->outbound.discard();
 }
 
-void cowircd::user::send_message()
+void cowircd::user::send_message(const irc_message& msg)
 {
-    this->do_write_message(NULL);
+    this->do_write_message(&msg);
 }
 
-void cowircd::user::do_write(const unsigned char* buf, std::size_t len)
+void cowircd::user::do_write(const void* buf, std::size_t len)
 {
     this->outbound.put(buf, len);
+}
+
+void cowircd::user::do_flush()
+{
     this->on_write();
+}
+
+void cowircd::user::do_write_and_flush(const void* buf, std::size_t len)
+{
+    this->do_write(buf, len);
+    this->do_flush();
 }
 
 void cowircd::user::process_byte_buffer(void* arg)
@@ -169,11 +179,11 @@ void cowircd::user::process_byte_buffer(void* arg)
     this->cumulative.discard();
 }
 
-void cowircd::user::do_write_string(void* arg)
+void cowircd::user::do_write_string(const void* arg)
 {
-    std::string& str = *static_cast<std::string*>(arg);
-    str.append("\r\n");
-    this->do_write(reinterpret_cast<const unsigned char*>(str.data()), sizeof(std::string::value_type) * str.size());
+    const std::string& str = *static_cast<const std::string*>(arg);
+    this->do_write(str.data(), sizeof(std::string::value_type) * str.size());
+    this->do_write_and_flush("\r\n", 2);
 }
 
 void cowircd::user::process_string_vector(void* arg)
@@ -198,31 +208,22 @@ void cowircd::user::process_string_vector(void* arg)
     this->cumulative_lines.clear();
 }
 
-void cowircd::user::do_write_message(void*)
+void cowircd::user::do_write_message(const void* arg)
 {
-    // TODO: irc_message::to_string
+    const irc_message& msg = *static_cast<const irc_message*>(arg);
+    std::string str = msg.to_string();
+    this->do_write_string(&str);
 }
 
 void cowircd::user::process_message(void* arg)
 {
     irc_message& msg = *static_cast<irc_message*>(arg);
 
-    std::cout << std::endl;
-    std::cout << "{" << std::endl;
-    std::cout << "\tCOMMAND=\"" << msg.get_command() << "\"" << std::endl;
-    if (msg.has_prefix())
+    std::cout << "[DEBUG]" << std::endl
+              << msg.to_pretty_string() << std::endl;
+
+    if (msg.get_command() == "ECHOME")
     {
-        std::cout << "\tPREFIX=\"" << msg.get_prefix() << "\"" << std::endl;
+        this->do_write_message(&msg);
     }
-    else
-    {
-        std::cout << "\tPREFIX=(null)" << std::endl;
-    }
-    std::cout << "\tPARAMS = [" << msg.size_param() << "] {" << std::endl;
-    for (std::size_t i = 1; i <= msg.size_param(); i++)
-    {
-        std::cout << "\t\t[" << i << "] = \"" << msg[i] << "\"" << std::endl;
-    }
-    std::cout << "\t}" << std::endl;
-    std::cout << "}" << std::endl;
 }
