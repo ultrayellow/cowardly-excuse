@@ -5,6 +5,7 @@
 
 #include "user.hpp"
 
+#include "irc_message.hpp"
 #include "looper.hpp"
 #include "socket_entry.hpp"
 
@@ -181,24 +182,47 @@ void cowircd::user::process_string_vector(void* arg)
     this->cumulative_lines.insert(this->cumulative_lines.end(), lines.begin(), lines.end());
     lines.clear();
 
-    // FIXME: 실험용 임시 로직 시작
-    // 3줄 단위로 echo 하기
-    for (std::size_t i = 0; i < this->cumulative_lines.size() / 3; i++)
+    for (std::size_t i = 0; i < this->cumulative_lines.size(); i++)
     {
-        const std::string& s0 = this->cumulative_lines[3 * i + 0];
-        const std::string& s1 = this->cumulative_lines[3 * i + 1];
-        const std::string& s2 = this->cumulative_lines[3 * i + 2];
-        std::string s = s0 + s1 + s2;
-        this->do_write_string(&s);
+        const std::string& s = this->cumulative_lines[i];
+        irc_message msg;
+        if (irc_message::parse(s, msg))
+        {
+            this->process_message(&msg);
+        }
+        else
+        {
+            std::cerr << "parse error: \"" << s << "\"" << std::endl;
+        }
     }
-    this->cumulative_lines.erase(this->cumulative_lines.begin(), this->cumulative_lines.end() - this->cumulative_lines.size() % 3);
-    // FIXME: 실험용 임시 로직 끝
+    this->cumulative_lines.clear();
 }
 
 void cowircd::user::do_write_message(void*)
 {
+    // TODO: irc_message::to_string
 }
 
-void cowircd::user::process_message(void*)
+void cowircd::user::process_message(void* arg)
 {
+    irc_message& msg = *static_cast<irc_message*>(arg);
+
+    std::cout << std::endl;
+    std::cout << "{" << std::endl;
+    std::cout << "\tCOMMAND=\"" << msg.get_command() << "\"" << std::endl;
+    if (msg.has_prefix())
+    {
+        std::cout << "\tPREFIX=\"" << msg.get_prefix() << "\"" << std::endl;
+    }
+    else
+    {
+        std::cout << "\tPREFIX=(null)" << std::endl;
+    }
+    std::cout << "\tPARAMS = [" << msg.size_param() << "] {" << std::endl;
+    for (std::size_t i = 1; i <= msg.size_param(); i++)
+    {
+        std::cout << "\t\t[" << i << "] = \"" << msg[i] << "\"" << std::endl;
+    }
+    std::cout << "\t}" << std::endl;
+    std::cout << "}" << std::endl;
 }
