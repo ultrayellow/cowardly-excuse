@@ -14,23 +14,28 @@
 
 namespace cowircd
 {
+    class user;
+    class room;
+
     struct server_config
     {
         int port;
         int backlog;
     };
 
-    class user;
-    class room;
+    struct server_group
+    {
+        std::map<std::string, uy::shared_ptr<room> > room_dictionary;
+    };
 
     class server : public socket_entry
     {
     private:
-        const server_config& config;
-        std::map<std::string, uy::shared_ptr<room> > room_dictionary;
+        server_config config;
+        server_group& group;
 
     public:
-        server(int fd, const server_config& config);
+        server(int fd, const server_config& config, server_group& group);
         ~server();
         bool listen();
 

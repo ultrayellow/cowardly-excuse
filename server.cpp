@@ -25,8 +25,8 @@
 
 #include <iostream>
 
-cowircd::server::server(int fd, const server_config& config)
-    : socket_entry(fd), config(config)
+cowircd::server::server(int fd, const server_config& config, server_group& group)
+    : socket_entry(fd), config(config), group(group)
 {
 }
 
@@ -126,7 +126,7 @@ void cowircd::server::on_close() throw()
 
 const uy::shared_ptr<cowircd::room>& cowircd::server::get_or_new_channel(const std::string& name)
 {
-    uy::shared_ptr<room>& channel = this->room_dictionary[name];
+    uy::shared_ptr<room>& channel = this->group.room_dictionary[name];
     if (!channel)
     {
         channel = uy::make_shared<room>(*this, name);
@@ -136,5 +136,5 @@ const uy::shared_ptr<cowircd::room>& cowircd::server::get_or_new_channel(const s
 
 void cowircd::server::remove_channel(const std::string& name)
 {
-    this->room_dictionary.erase(name);
+    this->group.room_dictionary.erase(name);
 }
