@@ -7,14 +7,19 @@
 
 #include "irc_message.hpp"
 #include "looper.hpp"
+#include "message_processor.hpp"
 #include "room.hpp"
+#include "server.hpp"
 #include "socket_entry.hpp"
 
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <algorithm>
 #include <cerrno>
+#include <cstdlib>
 #include <cstring>
+#include <sstream>
 #include <string>
 
 #include <iostream>
@@ -73,7 +78,16 @@ void cowircd::user::on_read() throw()
         }
         inbound.raw_shrink(r);
 
-        this->process_byte_buffer(&inbound);
+        try
+        {
+            this->process_byte_buffer(&inbound);
+        }
+        catch (std::exception& e)
+        {
+            std::cerr << "recv 후 처리 실패: 복구를 시도하지 않음: " << e.what() << std::endl;
+            this->disconnect();
+            return;
+        }
     }
 }
 
@@ -136,10 +150,12 @@ void cowircd::user::on_close() throw()
 
     std::vector<room*> move;
     this->room_list.swap(move);
+    // 이제 room_list는 clear 되었다.
     for (std::vector<room*>::iterator it = move.begin(); it != move.end(); ++it)
     {
-        room* chat_room = *it;
-        chat_room->quit(this, this->quit_reason);
+        room* channel = *it;
+        channel->broadcast(irc_message(this->to_prefix(), "QUIT") << this->quit_reason);
+        channel->part(this);
     }
 }
 
@@ -246,8 +262,45 @@ void cowircd::user::process_message(void* arg)
     std::cout << "[DEBUG]" << std::endl
               << msg.to_pretty_string() << std::endl;
 
-    if (msg.get_command() == "ECHOME")
+    message_processor::run(this->svr, *this, msg);
+}
+
+std::string cowircd::user::to_prefix() const
+{
+    std::ostringstream oss;
+    oss << "unknown" << this->remote_port << "@" << this->remote_addr;
+    return oss.str();
+}
+
+void cowircd::user::enter_channel(room* channel)
+{
+    this->room_list.push_back(channel);
+    std::vector<room*>::iterator it = std::find(this->room_list.begin(), this->room_list.end(), channel);
+    if (it == this->room_list.end())
     {
-        this->do_write_message(&msg);
+        this->room_list.push_back(channel);
+    }
+}
+
+cowircd::room* cowircd::user::find_channel(const std::string& name)
+{
+    for (std::vector<room*>::iterator it = this->room_list.begin(); it != this->room_list.end(); ++it)
+    {
+        room* channel = *it;
+        if (channel->get_name() == name)
+        {
+            return channel;
+        }
+    }
+
+    return NULL;
+}
+
+void cowircd::user::leave_channel(room* channel)
+{
+    std::vector<room*>::iterator it = std::find(this->room_list.begin(), this->room_list.end(), channel);
+    if (it != this->room_list.end())
+    {
+        this->room_list.erase(it);
     }
 }

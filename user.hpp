@@ -66,6 +66,12 @@ namespace cowircd
         std::vector<room*> room_list;
         void process_message(void*);
 
+    public:
+        std::string to_prefix() const;
+        void enter_channel(room*);
+        room* find_channel(const std::string&);
+        void leave_channel(room*);
+
     private:
         user(const user&);
         user& operator=(const user&);

@@ -142,6 +142,11 @@ cowircd::irc_message::irc_message(const std::string& command)
 {
 }
 
+cowircd::irc_message::irc_message(const std::string& prefix, const std::string& command)
+    : command(command), has_prefix_value(true), prefix(prefix), params(), last_param_is_trailing(false)
+{
+}
+
 std::string& cowircd::irc_message::operator[](int i)
 {
     const irc_message* const_this = this;
@@ -150,7 +155,11 @@ std::string& cowircd::irc_message::operator[](int i)
 
 const std::string& cowircd::irc_message::operator[](int i) const
 {
-    if (i == -1)
+    if (i < -1)
+    {
+        throw std::out_of_range("지정되지 않은 특수 인덱스입니다.");
+    }
+    else if (i == -1)
     {
         return this->prefix;
     }
@@ -160,8 +169,19 @@ const std::string& cowircd::irc_message::operator[](int i) const
     }
     else
     {
+        // 여기서 i는 무조건 unsigned 상태이므로 안전하다.
+        if (static_cast<std::size_t>(i) > this->params.size())
+        {
+            throw std::out_of_range("없는 메시지 매개변수입니다.");
+        }
         return this->params[i - 1];
     }
+}
+
+cowircd::irc_message& cowircd::irc_message::operator<<(const std::string& str)
+{
+    this->add_param(str);
+    return *this;
 }
 
 const std::string& cowircd::irc_message::get_command() const

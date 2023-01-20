@@ -29,9 +29,12 @@ namespace cowircd
     public:
         irc_message();
         irc_message(const std::string& command);
+        irc_message(const std::string& prefix, const std::string& command);
 
         std::string& operator[](int i);
         const std::string& operator[](int i) const;
+
+        irc_message& operator<<(const std::string& str);
 
         const std::string& get_command() const;
 

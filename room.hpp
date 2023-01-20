@@ -7,8 +7,7 @@
 
 #include "irc_message.hpp"
 
-#include <uy_shared_ptr.hpp>
-
+#include <cstdlib>
 #include <vector>
 
 namespace cowircd
@@ -21,16 +20,18 @@ namespace cowircd
     private:
         server& svr;
         std::string name;
-        std::vector<uy::shared_ptr<user> > user_list;
+        std::vector<user*> user_list;
 
     public:
         room(server& svr, const std::string& name);
         ~room();
 
-        void join(const uy::shared_ptr<user>& usr);
-        void quit(user* usr, const std::string& reason);
+        const std::string& get_name() const throw();
 
-        void broadcast(const irc_message& msg) const;
+        void join(user* usr);
+        void part(user* usr);
+
+        void broadcast(const irc_message& msg, user* except = NULL) const;
 
     private:
         room(const room&);
